@@ -2,6 +2,11 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
+st.set_page_config(
+    page_title='Workers Comp Report',
+    page_icon='📄'
+)
+
 st.caption('VACAYZEN')
 st.title('Workers Comp Report')
 st.info('A tool used to produce workers comp summations.')
