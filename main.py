@@ -37,25 +37,38 @@ if (file is not None):
         if 'TIPS' in column: tips     = column
     
     overtime = amounts.index(overtime)
-    tips     = amounts.index(tips)
+    if tips != '':
+        tips     = amounts.index(tips)
 
     fields_gross   = st.multiselect('Applicable for Gross Pay',amounts,amounts)
     st.info('Paylocity does not included 401K in thier "gross pay" that appears on pay stubs.')
     field_overtime = st.selectbox('Applicable for Overtime',    amounts,overtime)
-    field_tips     = st.selectbox('Applicable for Tips',        amounts,tips)
+    if tips != '':
+        field_tips     = st.selectbox('Applicable for Tips',        amounts,tips)
 
     df['gross_pay'] = df.loc[:,fields_gross].sum(axis=1)
     df['overtime']  = df[field_overtime]
-    df['tips']      = df[field_tips]
+    if tips != '':
+        df['tips']      = df[field_tips]
 
-    df       = df[['Employee','Location','gross_pay','overtime','tips']]
-    employee = df.groupby(['Employee','Location']).sum().sort_values(by=['Location','Employee'])
-    employee = employee.reset_index()
-    employee.columns = ['employee','classification','gross_pay','overtime','tips']
-    category = employee.groupby('classification').count().reset_index().drop(['gross_pay','overtime','tips'],axis=1)
-    category = pd.merge(category, employee.groupby('classification').sum(numeric_only=True).reset_index(), on='classification')
-    category = category[['employee','classification','gross_pay','overtime','tips']]
-    category = category.rename(columns={'employee':'employees'})
+    if tips != '':
+        df       = df[['Employee','Location','gross_pay','overtime','tips']]
+        employee = df.groupby(['Employee','Location']).sum().sort_values(by=['Location','Employee'])
+        employee = employee.reset_index()
+        employee.columns = ['employee','classification','gross_pay','overtime','tips']
+        category = employee.groupby('classification').count().reset_index().drop(['gross_pay','overtime','tips'],axis=1)
+        category = pd.merge(category, employee.groupby('classification').sum(numeric_only=True).reset_index(), on='classification')
+        category = category[['employee','classification','gross_pay','overtime','tips']]
+        category = category.rename(columns={'employee':'employees'})
+    else:
+        df       = df[['Employee','Location','gross_pay','overtime']]
+        employee = df.groupby(['Employee','Location']).sum().sort_values(by=['Location','Employee'])
+        employee = employee.reset_index()
+        employee.columns = ['employee','classification','gross_pay','overtime']
+        category = employee.groupby('classification').count().reset_index().drop(['gross_pay','overtime'],axis=1)
+        category = pd.merge(category, employee.groupby('classification').sum(numeric_only=True).reset_index(), on='classification')
+        category = category[['employee','classification','gross_pay','overtime']]
+        category = category.rename(columns={'employee':'employees'})
 
     st.divider()
 
@@ -70,7 +83,8 @@ if (file is not None):
         left, middle, right = st.columns(3)
         left.metric('Gross Pay',  round(np.sum(category.gross_pay),2))
         middle.metric('Overtime', round(np.sum(category.overtime),2))
-        right.metric('Tips',      round(np.sum(category.tips),2))
+        if tips != '':
+            right.metric('Tips',      round(np.sum(category.tips),2))
     
     st.divider()
 
