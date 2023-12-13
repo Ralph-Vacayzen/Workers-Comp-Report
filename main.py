@@ -36,22 +36,25 @@ if (file is not None):
         if 'OT' in column:   overtime = column
         if 'TIPS' in column: tips     = column
     
-    overtime = amounts.index(overtime)
+    if overtime != '':
+        overtime = amounts.index(overtime)
     if tips != '':
         tips     = amounts.index(tips)
 
     fields_gross   = st.multiselect('Applicable for Gross Pay',amounts,amounts)
     st.info('Paylocity does not included 401K in thier "gross pay" that appears on pay stubs.')
-    field_overtime = st.selectbox('Applicable for Overtime',    amounts,overtime)
+    if overtime != '':
+        field_overtime = st.selectbox('Applicable for Overtime',    amounts,overtime)
     if tips != '':
         field_tips     = st.selectbox('Applicable for Tips',        amounts,tips)
 
     df['gross_pay'] = df.loc[:,fields_gross].sum(axis=1)
-    df['overtime']  = df[field_overtime]
+    if overtime != '':
+        df['overtime']  = df[field_overtime]
     if tips != '':
         df['tips']      = df[field_tips]
 
-    if tips != '':
+    if tips != '' and overtime != '':
         df       = df[['Employee','Location','gross_pay','overtime','tips']]
         employee = df.groupby(['Employee','Location']).sum().sort_values(by=['Location','Employee'])
         employee = employee.reset_index()
@@ -60,7 +63,8 @@ if (file is not None):
         category = pd.merge(category, employee.groupby('classification').sum(numeric_only=True).reset_index(), on='classification')
         category = category[['employee','classification','gross_pay','overtime','tips']]
         category = category.rename(columns={'employee':'employees'})
-    else:
+
+    elif tips == '' and overtime != '':
         df       = df[['Employee','Location','gross_pay','overtime']]
         employee = df.groupby(['Employee','Location']).sum().sort_values(by=['Location','Employee'])
         employee = employee.reset_index()
@@ -69,6 +73,28 @@ if (file is not None):
         category = pd.merge(category, employee.groupby('classification').sum(numeric_only=True).reset_index(), on='classification')
         category = category[['employee','classification','gross_pay','overtime']]
         category = category.rename(columns={'employee':'employees'})
+
+    elif tips != '' and overtime == '':
+        df       = df[['Employee','Location','gross_pay','tips']]
+        employee = df.groupby(['Employee','Location']).sum().sort_values(by=['Location','Employee'])
+        employee = employee.reset_index()
+        employee.columns = ['employee','classification','gross_pay','tips']
+        category = employee.groupby('classification').count().reset_index().drop(['gross_pay','tips'],axis=1)
+        category = pd.merge(category, employee.groupby('classification').sum(numeric_only=True).reset_index(), on='classification')
+        category = category[['employee','classification','gross_pay','tips']]
+        category = category.rename(columns={'employee':'employees'})
+
+    else:
+        df       = df[['Employee','Location','gross_pay']]
+        employee = df.groupby(['Employee','Location']).sum().sort_values(by=['Location','Employee'])
+        employee = employee.reset_index()
+        employee.columns = ['employee','classification','gross_pay']
+        category = employee.groupby('classification').count().reset_index().drop(['gross_pay'],axis=1)
+        category = pd.merge(category, employee.groupby('classification').sum(numeric_only=True).reset_index(), on='classification')
+        category = category[['employee','classification','gross_pay']]
+        category = category.rename(columns={'employee':'employees'})
+
+
 
     st.divider()
 
@@ -82,7 +108,8 @@ if (file is not None):
     with st.container():
         left, middle, right = st.columns(3)
         left.metric('Gross Pay',  round(np.sum(category.gross_pay),2))
-        middle.metric('Overtime', round(np.sum(category.overtime),2))
+        if overtime != '':
+            middle.metric('Overtime', round(np.sum(category.overtime),2))
         if tips != '':
             right.metric('Tips',      round(np.sum(category.tips),2))
     
